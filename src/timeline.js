@@ -118,6 +118,6 @@ function startTimeline (timeline, startTime) {
       lastTick = now;
     }
   }
-}
+};
 
 module.exports = Timeline;

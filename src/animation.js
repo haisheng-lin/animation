@@ -125,8 +125,8 @@ Animation.prototype.enterFrame = function (taskFn) {
  */
 Animation.prototype.then = function (callback) {
   const taskFn = function (next) {
-    callback();
-    next();
+    callback(); // 先执行外部定义的回调函数
+    next(); // 再切换到下一个任务，这个在 _runSyncTask 中定义了
   };
   return this._addTask(taskFn, TASK_SYNC);
 };
