@@ -1,6 +1,7 @@
 'use strict';
 
 const loadImage = require('./image-loader');
+const Timeline = require('./timeline');
 
 const STATE_INITIAL = 0; // 初始化状态
 const STATE_START = 1; // 开始状态
@@ -17,6 +18,7 @@ const TASK_ASYNC = 1; // 异步任务
 function Animation () {
   this.taskQueue = []; // 任务链数组: Array<{ taskFn: Function, taskType: number }>
   this.index = 0; // 当前正在执行的任务的索引
+  this.timeline = new Timeline();
   this.state = STATE_INITIAL; // 任务状态初始化
 }
 
@@ -42,7 +44,12 @@ Animation.prototype.loadImage = function (imgList) {
  * @param {string} imgUrl 图片地址
  */
 Animation.prototype.changePosition = function (ele, positions, imgUrl) {
-
+  const length = positions.length;
+  let taskFn;
+  let taskType;
+  if (!length) {
+    taskFn = next;
+  }
 };
 
 /**
@@ -207,7 +214,27 @@ Animation.prototype._runSyncTask = function (task) {
  * @param { taskFn: Funciton, taskType: number }
  */
 Animation.prototype._runAsyncTask = function (task) {
-  
+  const me = this;
+  /**
+   * 由于浏览器的异步执行：setTimeout 的时间是不准确的
+   * 所以我们自己实现一个 timeline 来精确控制异步任务的执行间隔
+   * 定义每一帧执行的回调函数
+   *
+   * @param {number} time 从动画开始执行到现在的所经历的时间
+   */
+  const enterFrame = function (time) {
+    const taskFn = task.taskFn;
+    const next = function () {
+      // 停止当前任务
+      me.timeline.stop();
+      // 执行下一个任务
+      me._runNextTask();
+    };
+    taskFn(next, time);
+  };
+
+  this.timeline.onenterframe = enterFrame;
+  this.timeline.start(this.interval);
 };
 
 /**
