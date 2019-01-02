@@ -70,7 +70,7 @@ Timeline.prototype.start = function (interval) {
  * 停止动画
  */
 Timeline.prototype.stop = function () {
-  if (this.state !== STATE_STOP) {
+  if (this.state !== STATE_START) {
     return;
   }
   this.state = STATE_STOP;
@@ -103,7 +103,7 @@ Timeline.prototype.restart = function () {
 function startTimeline (timeline, startTime) {
   timeline.startTime = startTime;
   nextTick.interval = timeline.interval;
-  const lastTick = +new Date(); // 记录上一次回调的时间戳
+  let lastTick = +new Date(); // 记录上一次回调的时间戳
   nextTick();
   /**
    * 每一帧执行的函数

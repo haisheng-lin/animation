@@ -9,27 +9,32 @@ const positions = [
 ];
 const ele = document.querySelector('#rabbit');
 
-/**
- * 执行帧动画的函数
- *
- * @param {Element} ele
- * @param {string[]} positions
- * @param {string} imgUrl
- */
-function animation (ele, positions, imgUrl) {
+const animation = window.animation;
 
-  let index = 0;
-  ele.style.backgroundImage = 'url(' + imgUrl + ')';
-  ele.style.backgroundRepeat = 'no-repeat';
+const repeatAnimation = animation().loadImage([imgUrl]).changePosition(ele, positions, imgUrl).repeatForever();
+repeatAnimation.start(80);
 
-  function run () {
-    index = (index + 1) % positions.length;
-    const position = positions[index].split(' ');
-    ele.style.backgroundPosition = position[0] + 'px ' + position[1] + 'px';
-    setTimeout(run, 80);
-  }
+// /**
+//  * 执行帧动画的函数
+//  *
+//  * @param {Element} ele
+//  * @param {string[]} positions
+//  * @param {string} imgUrl
+//  */
+// function animation (ele, positions, imgUrl) {
 
-  run();
-}
+//   let index = 0;
+//   ele.style.backgroundImage = 'url(' + imgUrl + ')';
+//   ele.style.backgroundRepeat = 'no-repeat';
 
-animation(ele, positions, imgUrl);
+//   function run () {
+//     index = (index + 1) % positions.length;
+//     const position = positions[index].split(' ');
+//     ele.style.backgroundPosition = position[0] + 'px ' + position[1] + 'px';
+//     setTimeout(run, 80);
+//   }
+
+//   run();
+// }
+
+// animation(ele, positions, imgUrl);

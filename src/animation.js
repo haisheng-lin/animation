@@ -55,9 +55,10 @@ Animation.prototype.loadImage = function (imgList) {
 Animation.prototype.changePosition = function (ele, positions, imgUrl) {
   const length = positions.length;
   let taskFn;
-  const taskType = TASK_ASYNC;
+  let taskType;
   if (!length) {
     taskFn = next;
+    taskType = TASK_SYNC;
   } else {
     const me = this;
     taskFn = function (next, time) {
@@ -65,14 +66,15 @@ Animation.prototype.changePosition = function (ele, positions, imgUrl) {
         ele.style.backgroundImage = 'url(' + imgUrl + ')';
       }
       // 获得当前图片位置索引
-      let index = Math.min(time / me.interval | 0, length - 1);
-      const position = positions[index].split(' ');
+      let index = Math.min(time / me.interval | 0, length);
+      const position = positions[index - 1].split(' ');
       // 改变 dom 对象背景图片设置
       ele.style.backgroundPosition = position[0] + 'px ' + position[1] + 'px';
-      if (index === length - 1) {
+      if (index === length) {
         next();
       }
     };
+    taskType = TASK_ASYNC;
   }
   return this._addTask(taskFn, taskType);
 };
@@ -86,9 +88,10 @@ Animation.prototype.changePosition = function (ele, positions, imgUrl) {
 Animation.prototype.changeSrc = function (ele, imgList) {
   const length = imgList.length;
   let taskFn;
-  const taskType = TASK_ASYNC;
+  let taskType;
   if (!length) {
     taskFn = next;
+    taskType = TASK_SYNC;
   } else {
     const me = this;
     taskFn = function (next, time) {
@@ -100,6 +103,7 @@ Animation.prototype.changeSrc = function (ele, imgList) {
         next();
       }
     };
+    taskType = TASK_ASYNC;
   }
   return this._addTask(taskFn, taskType);
 };
