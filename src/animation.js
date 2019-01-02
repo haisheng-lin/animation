@@ -11,6 +11,15 @@ const TASK_SYNC = 0; // 同步任务
 const TASK_ASYNC = 1; // 异步任务
 
 /**
+ * 简单的函数封装，执行 callback
+ *
+ * @param {Function} callback
+ */
+function next (callback) {
+  callback && callback();
+}
+
+/**
  * 帧动画类
  * 
  * @constructor
@@ -46,10 +55,26 @@ Animation.prototype.loadImage = function (imgList) {
 Animation.prototype.changePosition = function (ele, positions, imgUrl) {
   const length = positions.length;
   let taskFn;
-  let taskType;
+  const taskType = TASK_ASYNC;
   if (!length) {
     taskFn = next;
+  } else {
+    const me = this;
+    taskFn = function (next, time) {
+      if (imgUrl) {
+        ele.style.backgroundImage = 'url(' + imgUrl + ')';
+      }
+      // 获得当前图片位置索引
+      let index = Math.min(time / me.interval | 0, length - 1);
+      const position = positions[index].split(' ');
+      // 改变 dom 对象背景图片设置
+      ele.style.backgroundPosition = position[0] + 'px ' + position[1] + 'px';
+      if (index === length - 1) {
+        next();
+      }
+    };
   }
+  return this._addTask(taskFn, taskType);
 };
 
 /**
@@ -59,7 +84,24 @@ Animation.prototype.changePosition = function (ele, positions, imgUrl) {
  * @param {string[]} imgList 图片地址数组
  */
 Animation.prototype.changeSrc = function (ele, imgList) {
-
+  const length = imgList.length;
+  let taskFn;
+  const taskType = TASK_ASYNC;
+  if (!length) {
+    taskFn = next;
+  } else {
+    const me = this;
+    taskFn = function (next, time) {
+      // 获得当前图片索引
+      let index = Math.min(time / me.interval | 0, length - 1);
+      // 改变 image 对象的图片地址
+      ele.src = imgList[index];
+      if (index === length - 1) {
+        next();
+      }
+    };
+  }
+  return this._addTask(taskFn, taskType);
 };
 
 /**
@@ -69,7 +111,7 @@ Animation.prototype.changeSrc = function (ele, imgList) {
  * @param {Function} taskFn 自定义每帧执行的任务函数
  */
 Animation.prototype.enterFrame = function (taskFn) {
-
+  return this._addTask(taskFn, TASK_ASYNC);
 };
 
 /**
@@ -78,7 +120,11 @@ Animation.prototype.enterFrame = function (taskFn) {
  * @param {Function} callback 回调函数
  */
 Animation.prototype.then = function (callback) {
-
+  const taskFn = function (next) {
+    callback();
+    next();
+  };
+  return this._addTask(taskFn, TASK_SYNC);
 };
 
 /**
@@ -107,7 +153,24 @@ Animation.prototype.start = function (interval) {
  * @param {number} times 重复次数
  */
 Animation.prototype.repeat = function (times) {
-
+  const me = this;
+  const taskFn = function () {
+    if (typeof times === 'undefined') {
+      // 无限回退到上一个任务
+      me.index--;
+      me._runTask();
+      return;
+    }
+    if (times) {
+      times--;
+      me.index--;
+      me._runTask();
+    } else { // 达到重复次数，跳转到下个任务
+      const task = me.taskQueue[me.index];
+      me._runNextTask(task);
+    }
+  };
+  return this._addTask(taskFn, TASK_SYNC);
 };
 
 /**
@@ -115,7 +178,7 @@ Animation.prototype.repeat = function (times) {
  * 无限重复上一个任务
  */
 Animation.prototype.repeatForever = function () {
-
+  return this.repeat();
 };
 
 /**
@@ -124,28 +187,48 @@ Animation.prototype.repeatForever = function () {
  * @param {number} time 等待时长（毫秒）
  */
 Animation.prototype.wait = function (time) {
-
+  if (this.taskQueue && this.taskQueue.length) {
+    this.taskQueue[this.taskQueue.length - 1].wait = time;
+  }
+  return this;
 };
 
 /**
  * 暂停当前异步定时任务
  */
 Animation.prototype.pause = function () {
-
+  if (this.state === STATE_START) {
+    this.state = STATE_STOP;
+    this.timeline.stop();
+    return this;
+  }
+  return this;
 };
 
 /**
  * 重新执行上一次暂停的异步定时任务
  */
 Animation.prototype.restart = function () {
-
+  if (this.state === STATE_STOP) {
+    this.state = STATE_START;
+    this.timeline.restart();
+    return this;
+  }
+  return this;
 };
 
 /**
  * 释放资源（停掉计时器）
  */
 Animation.prototype.dispose = function () {
-
+  if (this.state !== STATE_INITIAL) {
+    this.state = STATE_INITIAL;
+    this.taskQueue = null;
+    this.timeline.stop();
+    this.timeline = null;
+    return this;
+  }
+  return this;
 };
 
 /**
@@ -196,12 +279,12 @@ Animation.prototype._runTask = function () {
  * 执行同步任务
  *
  * @private
- * @param { taskFn: Funciton, taskType: number }
+ * @param { taskFn: Funciton, taskType: number } task
  */
 Animation.prototype._runSyncTask = function (task) {
   const me = this;
   const next = function () { // 切换到下一个任务
-    me._runNextTask();
+    me._runNextTask(task);
   };
   const taskFn = task.taskFn;
   taskFn(next);
@@ -228,7 +311,7 @@ Animation.prototype._runAsyncTask = function (task) {
       // 停止当前任务
       me.timeline.stop();
       // 执行下一个任务
-      me._runNextTask();
+      me._runNextTask(task);
     };
     taskFn(next, time);
   };
@@ -238,11 +321,19 @@ Animation.prototype._runAsyncTask = function (task) {
 };
 
 /**
- * 切换到下一个任务
+ * 切换到下一个任务，支持如果当前任务需要等待，则延时进行
  *
  * @private
+ * @param { taskFn: Funciton, taskType: number } task 当前任务
  */
-Animation.prototype._runNextTask = function () {
+Animation.prototype._runNextTask = function (task) {
   this.index++;
-  this._runTask();
+  const me = this;
+  task.wait ? setTimeout(function () {
+    me._runTask();
+  }, task.wait) : this._runTask();
 }
+
+module.exports = function () {
+  return new Animation();
+};
