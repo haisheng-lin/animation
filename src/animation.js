@@ -15,7 +15,7 @@ const TASK_ASYNC = 1; // 异步任务
  * @constructor
  */
 function Animation () {
-  this.taskQueue = []; // 任务链数组
+  this.taskQueue = []; // 任务链数组: Array<{ taskFn: Function, taskType: number }>
   this.index = 0; // 当前正在执行的任务的索引
   this.state = STATE_INITIAL; // 任务状态初始化
 }
@@ -77,10 +77,20 @@ Animation.prototype.then = function (callback) {
 /**
  * 开始执行任务，异步定义任务执行的间隔
  *
- * @param {number} interval 时间间隔（毫秒）
+ * @param  {number} interval 时间间隔（毫秒）
+ * @return {Animation}
  */
 Animation.prototype.start = function (interval) {
-
+  if (this.state === STATE_START) {
+    return this;
+  }
+  if (!this.taskQueue.length) { // 如果任务链没有任务，则返回
+    return this;
+  }
+  this.state = STATE_START;
+  this.interval = interval; // 保存 interval 到本实例
+  this._runTask();
+  return this;
 };
 
 /**
@@ -134,6 +144,7 @@ Animation.prototype.dispose = function () {
 /**
  * 添加一个任务到任务队列中
  *
+ * @private
  * @param  {Function} taskFn 任务方法
  * @param  {number} taskType 任务类型
  * @return {Animation}
@@ -151,4 +162,60 @@ Animation.prototype._addTask = function (taskFn, taskType) {
    * 这也是链式调用的常用技巧
    */
   return this; // 由于链式调用，我们需要返回当前 Animation 的实例
+};
+
+/**
+ * 执行任务
+ *
+ * @private
+ */
+Animation.prototype._runTask = function () {
+  if (!this.taskQueue || this.state !== STATE_START) {
+    return;
+  }
+  if (this.index === this.taskQueue.length) { // 如果任务队列执行完
+    this.dispose();
+    return;
+  }
+  const task = this.taskQueue[this.index]; // 获取任务链上的当前任务
+  if (task.taskType === TASK_SYNC) {
+    this._runSyncTask(task);
+  } else {
+    this._runAsyncTask(task);
+  }
+};
+
+/**
+ * 执行同步任务
+ *
+ * @private
+ * @param { taskFn: Funciton, taskType: number }
+ */
+Animation.prototype._runSyncTask = function (task) {
+  const me = this;
+  const next = function () { // 切换到下一个任务
+    me._runNextTask();
+  };
+  const taskFn = task.taskFn;
+  taskFn(next);
+};
+
+/**
+ * 执行异步任务
+ *
+ * @private
+ * @param { taskFn: Funciton, taskType: number }
+ */
+Animation.prototype._runAsyncTask = function (task) {
+  
+};
+
+/**
+ * 切换到下一个任务
+ *
+ * @private
+ */
+Animation.prototype._runNextTask = function () {
+  this.index++;
+  this._runTask();
 }
