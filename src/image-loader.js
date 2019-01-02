@@ -17,7 +17,7 @@ function loadImage (images, callback, timeout) {
     if (images.hasOwnProperty(key)) { // 过滤 prototype 上的属性
       continue;
     }
-    let item = iamges[key]; // 获取每个图片元素，期望格式是个 object: { src: xxx }
+    let item = images[key]; // 获取每个图片元素，期望格式是个 object: { src: xxx }
     if (typeof item === 'string') {
       item = images[key] = {
         src: item,
