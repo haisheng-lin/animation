@@ -1,8 +1,13 @@
 'use strict';
 
+const loadImage = require('./image-loader');
+
 const STATE_INITIAL = 0; // 初始化状态
 const STATE_START = 1; // 开始状态
 const STATE_STOP = 2; // 停止状态
+
+const TASK_SYNC = 0; // 同步任务
+const TASK_ASYNC = 1; // 异步任务
 
 /**
  * 帧动画类
@@ -18,10 +23,15 @@ function Animation () {
 /**
  * 添加一个同步任务，去预加载图片
  *
- * @param {string[]} imgList 图片数组
+ * @param  {string[]} imgList 图片数组
+ * @return {Animation}
  */
 Animation.prototype.loadImage = function (imgList) {
-  
+  let taskFn = function (next) {
+    loadImage(imgList.slice(), next); // 操作 imgList 的副本，因为 loadImage 内部修改了 imgList 的属性
+  };
+  const type = TASK_SYNC;
+  return this._addTask(taskFn, type);
 };
 
 /**
@@ -120,3 +130,25 @@ Animation.prototype.restart = function () {
 Animation.prototype.dispose = function () {
 
 };
+
+/**
+ * 添加一个任务到任务队列中
+ *
+ * @param  {Function} taskFn 任务方法
+ * @param  {number} taskType 任务类型
+ * @return {Animation}
+ */
+Animation.prototype._addTask = function (taskFn, taskType) {
+  this.taskQueue.push({
+    taskFn,
+    taskType,
+  });
+  /**
+   * 由于链式调用，我们需要返回当前 Animation 的实例
+   * 举个例子：
+   * new Aniamtion.loadImage(imageList).then(afterLoadImage)
+   * 可以看到函数的每次调用都是基于 new Animation 这个实例的
+   * 这也是链式调用的常用技巧
+   */
+  return this; // 由于链式调用，我们需要返回当前 Animation 的实例
+}
