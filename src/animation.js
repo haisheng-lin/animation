@@ -1,12 +1,18 @@
 'use strict';
 
+const STATE_INITIAL = 0; // 初始化状态
+const STATE_START = 1; // 开始状态
+const STATE_STOP = 2; // 停止状态
+
 /**
  * 帧动画类
  * 
  * @constructor
  */
 function Animation () {
-
+  this.taskQueue = []; // 任务链数组
+  this.index = 0; // 当前正在执行的任务的索引
+  this.state = STATE_INITIAL; // 任务状态初始化
 }
 
 /**
@@ -15,7 +21,7 @@ function Animation () {
  * @param {string[]} imgList 图片数组
  */
 Animation.prototype.loadImage = function (imgList) {
-
+  
 };
 
 /**
